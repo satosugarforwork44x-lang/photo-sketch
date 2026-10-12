@@ -1,0 +1,31 @@
+{
+  "id": "photo",
+  "name": "フォトスケッチ",
+  "version": "0.6.0",
+  "summary": "写真に文字・線・図形を重ね、AI に頼む場所を丸で示す。元の写真は変えない（レイヤーは JSON で持つ）",
+  "kind": "panel",
+  "runtime": "python",
+  "api": "api.py",
+  "visibility": "public",
+  "requires": { "hub": ">=0.8", "moduleApi": 1 },
+  "hub": {
+    "window": "panel",
+    "size": [1120, 760],
+    "ui": "ui/panel.js",
+    "tile": { "icon": "photoEdit" },
+    "blob": "blob_path",
+    "upload": ["save_render"]
+  },
+  "exports": [
+    { "fn": "state", "summary": "保存先・写真の一覧" },
+    { "fn": "add_images", "summary": "写真から新しいフォトスケッチを作る" },
+    { "fn": "open_photo", "summary": "フォトスケッチを開く" },
+    { "fn": "save_photo", "summary": "フォトスケッチを保存する" },
+    { "fn": "poll", "summary": "外で書き換えられたか（更新時刻）" },
+    { "fn": "raw_info", "summary": "RAW の下見（中の JPEG）と、現像に使える物" },
+    { "fn": "raw_develop", "summary": "RAW を現像する（rawpy または私用の LibRaw）" },
+    { "fn": "relink", "summary": "見つからない元の写真の場所を指定し直す" },
+    { "fn": "reveal", "summary": "保存先（または AI 用プレビュー）をエクスプローラーで見せる" }
+  ],
+  "locales": { "en": { "name": "Photo Sketch", "summary": "Put text, lines and shapes over a photo and circle what you want AI to change. The original photo is never modified (layers are kept as JSON)" } }
+}

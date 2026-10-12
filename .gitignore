@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.tmp
+.photo-*.tmp
+.ai-*.tmp
+# 利用者ごとの追加の RAW 現像（例: LibRaw の dcraw_emu.exe を呼ぶ）。公開しない
+raw_local.py
