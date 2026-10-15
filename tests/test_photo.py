@@ -132,6 +132,38 @@ class PhotoTest(unittest.TestCase):
         self.assertEqual((d["masks"][0]["feather"], d["masks"][0]["adjust"]["exposure"]), (1, -1))
         self.assertEqual(d["layers"][0]["type"], "blur")
 
+    def test_delete_moves_json_and_preview_only(self):
+        import sys, types
+        sent = []
+        fake = types.ModuleType("send2trash")
+        fake.send2trash = lambda path: (sent.append(Path(path).name), Path(path).unlink())
+        folder = Path(self.api.state()["folder"])
+        name = self.api.add_images([str(self.pic)])["made"][0]
+        self.api.save_render(b"\x89PNG\r\n\x1a\n", name=name, kind="ai")
+        self.api.save_render(b"\xff\xd8\xff\xe0", name=name, kind="export", format="jpg")
+        sys.modules["send2trash"] = fake
+        try:
+            r = self.api.delete_photos([name, "nope"])
+        finally:
+            del sys.modules["send2trash"]
+        self.assertEqual(r["deleted"], [name])
+        self.assertEqual(len(r["errors"]), 1)
+        self.assertEqual(sorted(sent), sorted([f"{name}.photo.json", f"{name}.png"]))
+        self.assertTrue(self.pic.exists())                         # 元の写真は残す
+        self.assertTrue((folder / "export" / f"{name}.jpg").exists())   # 書き出しも残す
+        self.assertNotIn(name, self.api.state()["files"])
+
+    def test_delete_without_send2trash_keeps_a_copy(self):
+        import sys
+        name = self.api.add_images([str(self.pic)])["made"][0]
+        sys.modules["send2trash"] = None                            # import できない状態
+        try:
+            self.api.delete_photos([name])
+        finally:
+            del sys.modules["send2trash"]
+        folder = Path(self.api.state()["folder"])
+        self.assertTrue((folder / "_to_delete" / f"{name}.photo.json").exists())
+
     def test_missing_source_and_relink(self):
         name = self.api.add_images([str(self.pic)])["made"][0]
         moved = self.pic.with_name("moved.jpg")

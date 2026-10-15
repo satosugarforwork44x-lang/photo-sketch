@@ -59,6 +59,7 @@ So Photo Sketch is a **light editing table that sits in Hub**, one click away:
 | **Masks** (`L`) | Linear (from an edge) and radial (from a centre, with feather and invert), each with its own adjustments |
 | **Crop / straighten** (`C` / `R`) | Aspect ratios free, original, 1:1, 4:5, 16:9, 9:16. Draw along the horizon to level it |
 | **RAW** | DNG, CR2, CR3, NEF, ARW, RAF, ORF, RW2, PEF, SRW. White balance, exposure and highlight recovery with rawpy |
+| **Delete** | From the list (hover button, right-click or `Delete`). The sketch file and its AI preview go to the Recycle Bin; the original photo and your exports are kept |
 | **Export** (`Ctrl+E`) | JPEG (quality) or PNG, full size / 2048 / 1080, or the layers alone as a transparent PNG |
 | **English & Japanese** | The panel is available in both languages |
 
@@ -152,5 +153,6 @@ Commercial use is not permitted. For commercial use, please contact the author.
 |---|---|---|---|
 | rawpy (LibRaw inside) | RAW developing | MIT (LibRaw: LGPL-2.1 / CDDL-1.0) | optional |
 | Pillow | JPEG for developed RAW (PNG otherwise) | MIT-CMU (HPND) | optional |
+| Send2Trash | delete to the Recycle Bin (already used by Hub) | BSD-3-Clause | optional |
 
 The logo (`assets/`) is covered by the same license as this repository. The sample photo in `docs/` is by NASA (public domain).

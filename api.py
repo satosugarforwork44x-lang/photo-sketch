@@ -245,6 +245,45 @@ def poll(name: str) -> dict:
     return {"mtime": p.stat().st_mtime if p.exists() else None}
 
 
+def _trash(p: Path) -> None:
+    """ごみ箱へ送る（Hub と同じ send2trash）。無い環境では保存先の _to_delete へ移す（完全には消さない）。"""
+    try:
+        from send2trash import send2trash
+        send2trash(str(p))
+    except ImportError:
+        bin_dir = _folder() / "_to_delete"
+        bin_dir.mkdir(exist_ok=True)
+        dest = bin_dir / p.name
+        i = 2
+        while dest.exists():
+            dest = bin_dir / f"{p.stem} ({i}){p.suffix}"
+            i += 1
+        os.replace(p, dest)
+
+
+def delete_photos(names: list[str]) -> dict:
+    """フォトスケッチを消す: <名前>.photo.json と AI 用プレビュー（_ai/<名前>.png）をごみ箱へ。
+    元の写真と、書き出した画像（export/）は消さない（利用者のファイル・成果物なので）。"""
+    done, errors = [], []
+    for name in names or []:
+        try:
+            p = _path(name)
+            if not p.exists():
+                raise PhotoError("見つかりません")
+            _trash(p)
+            ai = _folder() / AI_DIR / f"{name}.png"
+            if ai.is_file():
+                _trash(ai)
+            done.append(name)
+            if _ctx.store.get("photo", "current", None) == name:
+                _ctx.store.set("photo", "current", None)
+        except PhotoError as e:
+            errors.append(f"{name}: {e}")
+        except OSError as e:
+            errors.append(f"{name}: {e}")
+    return {"deleted": done, "errors": errors}
+
+
 def relink(name: str, path: str) -> dict:
     """元の写真が見つからないとき、新しい場所を指定する。"""
     data = open_photo(name)

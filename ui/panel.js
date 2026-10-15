@@ -41,6 +41,8 @@ const L = EN ? {
   look: "Look", adj: { exposure: "Exposure", contrast: "Contrast", saturation: "Saturation", temp: "Temperature", tint: "Tint", vignette: "Vignette", grain: "Grain" },
   presets: { none: "None", film: "Film", mono: "Mono", warm: "Warm", cool: "Cool", vivid: "Vivid", soft: "Soft" },
   masks: "Masks", addLinear: "+ Linear", addRadial: "+ Radial", feather: "Feather", invert: "Invert (outside)", linearN: (n) => `Linear ${n}`, radialN: (n) => `Radial ${n}`,
+  delPhoto: "Delete", delTip: "Send this photo sketch (JSON and AI preview) to the Recycle Bin. The original photo and exports are kept.",
+  deleted: (n) => `Moved “${n}” to the Recycle Bin (the original photo and exports are kept)`, openIt: "Open",
   dragToMake: "Drag on the photo to place the mask", noMasks: "No masks. A mask adjusts only part of the photo (sky, edges, a face).",
   embedded: "Showing the JPEG inside the RAW. Install rawpy (Python 3.12–3.14: py -m pip install rawpy) for real developing. Exposure here is only a simple brightness.",
 } : {
@@ -76,6 +78,8 @@ const L = EN ? {
   look: "仕上がり", adj: { exposure: "露出", contrast: "コントラスト", saturation: "彩度", temp: "色温度", tint: "色かぶり", vignette: "周辺減光", grain: "粒子" },
   presets: { none: "なし", film: "フィルム", mono: "モノクロ", warm: "暖かく", cool: "涼しく", vivid: "ビビッド", soft: "ふんわり" },
   masks: "マスク", addLinear: "＋ 線形", addRadial: "＋ 円形", feather: "ぼかし幅", invert: "反転（外側に効かせる）", linearN: (n) => `線形 ${n}`, radialN: (n) => `円形 ${n}`,
+  delPhoto: "削除", delTip: "このフォトスケッチ（JSON と AI 用プレビュー）をごみ箱へ送ります。元の写真と書き出した画像は残します。",
+  deleted: (n) => `「${n}」をごみ箱へ送りました（元の写真と書き出しは残っています）`, openIt: "開く",
   dragToMake: "写真の上をドラッグしてマスクを置いてください", noMasks: "マスクはありません。マスクを使うと、写真の一部（空・端・顔など）だけを調整できます。",
   embedded: "RAW の中の JPEG を表示しています。rawpy（Python 3.12〜3.14 で py -m pip install rawpy）を入れると本当の現像ができます。ここでの露出は簡易な明るさです。",
 };
@@ -211,11 +215,34 @@ export async function mount(el, ctx) {
       }, { once: false });
       b.querySelector(".nm").textContent = f;
       b.addEventListener("click", () => open(f));
-      grid.append(b);
+      // 削除: 右上のボタン（ポイントしたとき）と右クリックのメニュー。ごみ箱へ送るので確認は出さない
+      const wrap = document.createElement("div");
+      wrap.className = "ph-cardw";
+      const del = document.createElement("button");
+      del.className = "icon-btn ph-del";
+      del.innerHTML = IC.trash; del.title = L.delTip; del.setAttribute("aria-label", `${L.delPhoto}: ${f}`);
+      del.addEventListener("click", (e) => { e.stopPropagation(); deletePhoto(f); });
+      b.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        ctx.contextMenu([{ label: L.openIt, icon: IC.image, onClick: () => open(f) }, "-",
+          { label: L.delPhoto, icon: IC.trash, onClick: () => deletePhoto(f) }], e.clientX, e.clientY);
+      });
+      b.addEventListener("keydown", (e) => { if (e.key === "Delete") { e.preventDefault(); deletePhoto(f); } });
+      wrap.append(b, del);
+      grid.append(wrap);
     }
   }
 
   async function refresh() { st = await ctx.call("state"); }
+  async function deletePhoto(f) {
+    try {
+      const r = await ctx.call("delete_photos", { names: [f] });
+      if (r.errors.length) ctx.toast(r.errors[0], "error", 6000);
+      if (r.deleted.length) ctx.toast(L.deleted(f), "info", 5000);
+      await refresh();
+      showHome();
+    } catch (e) { ctx.toast(e.message, "error"); }
+  }
   async function addImages(paths) {
     try {
       const r = await ctx.call("add_images", { paths });

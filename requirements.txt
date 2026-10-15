@@ -2,3 +2,4 @@
 # RAW を「本当に現像」したいときだけ入れてください。無くても RAW の中の JPEG で開けます。
 rawpy>=0.27 ; python_version < "3.15"   # RAW の現像。MIT（中の LibRaw は LGPL-2.1 / CDDL-1.0）。3.15 用はまだ無い
 Pillow>=10                               # 現像の結果を JPEG で渡す（無ければ PNG）。MIT-CMU（HPND）
+Send2Trash>=1.8                          # 削除をごみ箱経由にする（Hub も使っている）。BSD-3-Clause。無ければ Photo Sketch\_to_delete へ移す

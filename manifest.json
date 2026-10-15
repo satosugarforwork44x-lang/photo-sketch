@@ -1,7 +1,7 @@
 {
   "id": "photo",
   "name": "フォトスケッチ",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "summary": "写真に文字・線・図形を重ね、AI に頼む場所を丸で示す。元の写真は変えない（レイヤーは JSON で持つ）",
   "kind": "panel",
   "runtime": "python",
@@ -24,6 +24,7 @@
     { "fn": "poll", "summary": "外で書き換えられたか（更新時刻）" },
     { "fn": "raw_info", "summary": "RAW の下見（中の JPEG）と、現像に使える物" },
     { "fn": "raw_develop", "summary": "RAW を現像する（rawpy または私用の LibRaw）" },
+    { "fn": "delete_photos", "summary": "フォトスケッチを消す（JSON と AI 用プレビューをごみ箱へ。元の写真・書き出しは残す）" },
     { "fn": "relink", "summary": "見つからない元の写真の場所を指定し直す" },
     { "fn": "reveal", "summary": "保存先（または AI 用プレビュー）をエクスプローラーで見せる" }
   ],
