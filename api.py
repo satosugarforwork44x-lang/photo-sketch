@@ -11,6 +11,7 @@ import json
 import os
 import re
 import tempfile
+import time
 from pathlib import Path
 
 _ctx = None
@@ -23,6 +24,8 @@ AI_DIR = "_ai"                 # AI 用プレビュー（注釈入りの PNG）�
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 AI_MAX = 40 * 1024 * 1024
 EXPORT_DIR = "export"           # 書き出した画像（上書きしない）
+PASTE_DIR = "_paste"            # 貼り付けた画像（スクショなど）。これが「元の写真」になる
+PASTE_MAX = 80 * 1024 * 1024
 JPEG_MAGIC = b"\xff\xd8\xff"
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 LAYER_TYPES = {"draw", "text", "shape", "note", "blur"}
@@ -261,27 +264,65 @@ def _trash(p: Path) -> None:
         os.replace(p, dest)
 
 
+def save_paste(data: bytes, name: str = "") -> dict:
+    """クリップボードから貼り付けた画像（スクショなど）を _paste/ に保存し、そのフォトスケッチを作る（Hub 0.8 の upload）。"""
+    if len(data) > PASTE_MAX:
+        raise PhotoError("貼り付けた画像が大きすぎます")
+    ext = ".png" if data.startswith(PNG_MAGIC) else ".jpg" if data.startswith(JPEG_MAGIC) else None
+    if not ext:
+        raise PhotoError("貼り付けられるのは画像（PNG / JPEG）だけです")
+    stem = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", "_", str(name)).strip()[:60] or time.strftime("paste-%Y-%m-%d-%H%M%S")
+    out_dir = _folder() / PASTE_DIR
+    out_dir.mkdir(exist_ok=True)
+    out = _unique(out_dir / f"{stem}{ext}")
+    fd, tmp = tempfile.mkstemp(dir=out_dir, prefix=".paste-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        os.replace(tmp, out)
+    except Exception:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+    return add_images([str(out)])
+
+
 def delete_photos(names: list[str]) -> dict:
     """フォトスケッチを消す: <名前>.photo.json と AI 用プレビュー（_ai/<名前>.png）をごみ箱へ。
-    元の写真と、書き出した画像（export/）は消さない（利用者のファイル・成果物なので）。"""
+    元の写真と、書き出した画像（export/）は消さない（利用者のファイル・成果物なので）。
+    ただし貼り付けで作った写真（_paste/ の中）はこのアプリが作った物なので、ほかのフォトスケッチが使っていなければ一緒に消す。"""
     done, errors = [], []
+    paste_dir = (_folder() / PASTE_DIR).resolve()
     for name in names or []:
         try:
             p = _path(name)
             if not p.exists():
                 raise PhotoError("見つかりません")
+            try:
+                src = Path(_read(name)[1]["source"]["path"]).resolve()
+            except PhotoError:
+                src = None
             _trash(p)
             ai = _folder() / AI_DIR / f"{name}.png"
             if ai.is_file():
                 _trash(ai)
+            if src and src.parent == paste_dir and src.is_file() and not _used_by_others(src):
+                _trash(src)
             done.append(name)
             if _ctx.store.get("photo", "current", None) == name:
                 _ctx.store.set("photo", "current", None)
-        except PhotoError as e:
-            errors.append(f"{name}: {e}")
-        except OSError as e:
+        except (PhotoError, OSError) as e:
             errors.append(f"{name}: {e}")
     return {"deleted": done, "errors": errors}
+
+
+def _used_by_others(src: Path) -> bool:
+    for f in _folder().glob(f"*{EXT}"):
+        try:
+            if Path(json.loads(f.read_text(encoding="utf-8"))["source"]["path"]).resolve() == src:
+                return True
+        except Exception:
+            continue
+    return False
 
 
 def relink(name: str, path: str) -> dict:

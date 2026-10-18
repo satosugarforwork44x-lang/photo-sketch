@@ -7,6 +7,8 @@ The panel reloads a file within ~2 seconds when it changes on disk, so **editing
 
 ## Seeing the photo
 
+- Screenshots pasted into the panel are saved as `_paste/paste-<date>.png`; `source.path` points there.
+
 - `_ai/<name>.png` is an **AI preview**: the photo with all visible layers, plus the user's **notes for AI**
   drawn as yellow dashed circles/boxes with numbers ①②③. It is updated when the user saves (Ctrl+S) or presses "Send to AI".
 - Read it with `folders_read_image` (Hub setting "Let Claude view images" must be on).

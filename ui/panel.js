@@ -9,7 +9,9 @@ import { addPoint, boxOf, eraseAt, hitTest, moveBy, resizeTo, textBox } from "./
 
 const EN = (document.documentElement.lang || navigator.language || "ja").startsWith("en");
 const L = EN ? {
-  dropTitle: "Drop photos here", dropNote: "JPEG / PNG / WebP / camera RAW. The original photo is never changed — your edits are saved as layers.",
+  dropTitle: "Drop photos here — or paste a screenshot (Ctrl+V)", dropNote: "JPEG / PNG / WebP / camera RAW. The original photo is never changed — your edits are saved as layers.",
+  paste: "Paste (Ctrl+V)", pasted: "Pasted from the clipboard", noClipImage: "There is no image on the clipboard. Take a screenshot (Win+Shift+S) first.",
+  pasteKey: "Press Ctrl+V to paste",
   pick: "Choose photos…", recent: "Recent", empty: "No photo sketches yet", openFolder: "Open the folder",
   home: "All photo sketches", layers: "Layers", photo: "Photo", info: "Photo", missing: "The original photo was not found:",
   relink: "Locate…", soon: "(coming in the next version)", undo: "Undo (Ctrl+Z)", redo: "Redo (Ctrl+Y)",
@@ -46,7 +48,9 @@ const L = EN ? {
   dragToMake: "Drag on the photo to place the mask", noMasks: "No masks. A mask adjusts only part of the photo (sky, edges, a face).",
   embedded: "Showing the JPEG inside the RAW. Install rawpy (Python 3.12–3.14: py -m pip install rawpy) for real developing. Exposure here is only a simple brightness.",
 } : {
-  dropTitle: "写真をここに落としてください", dropNote: "JPEG・PNG・WebP・RAW。元の写真は変えません（編集はレイヤーとして別に保存します）",
+  dropTitle: "写真をここに落とすか、スクショを貼り付け（Ctrl+V）", dropNote: "JPEG・PNG・WebP・RAW。元の写真は変えません（編集はレイヤーとして別に保存します）",
+  paste: "貼り付け（Ctrl+V）", pasted: "クリップボードの画像を貼り付けました", noClipImage: "クリップボードに画像がありません。先にスクショ（Win+Shift+S）を撮ってください",
+  pasteKey: "Ctrl+V で貼り付けてください",
   pick: "写真を選ぶ…", recent: "最近のフォトスケッチ", empty: "まだありません", openFolder: "フォルダを開く",
   home: "一覧に戻る", layers: "レイヤー", photo: "写真", info: "写真", missing: "元の写真が見つかりません:",
   relink: "場所を指定…", soon: "（次の版で使えます）", undo: "元に戻す（Ctrl+Z）", redo: "やり直す（Ctrl+Y）",
@@ -184,11 +188,14 @@ export async function mount(el, ctx) {
     switcherSlot.replaceChildren();
     ctx.setTitle(EN ? "Photo Sketch" : "フォトスケッチ");
     ctx.setStatus("");
-    home.innerHTML = `<div class="ph-drop">${IC.image}<p class="t"></p><p class="n"></p><button class="btn primary"></button></div>
+    home.innerHTML = `<div class="ph-drop">${IC.image}<p class="t"></p><p class="n"></p><div class="ph-drop-btns"><button class="btn primary pick"></button><button class="btn paste"></button></div></div>
       <h3 class="ph-h"></h3><div class="ph-grid"></div>`;
     home.querySelector(".t").textContent = L.dropTitle;
     home.querySelector(".n").textContent = L.dropNote;
-    const pick = home.querySelector("button");
+    const pick = home.querySelector(".pick");
+    const pasteBtn = home.querySelector(".paste");
+    pasteBtn.textContent = L.paste;
+    pasteBtn.addEventListener("click", () => pasteFromButton());
     pick.textContent = L.pick;
     pick.addEventListener("click", async () => {
       const paths = await ctx.host.pickFiles(ctx.id).catch(() => null);
@@ -234,6 +241,39 @@ export async function mount(el, ctx) {
   }
 
   async function refresh() { st = await ctx.call("state"); }
+  // ---------- 貼り付け（スクショなど）: 画像を _paste/ に保存して、そのフォトスケッチを開く ----------
+  async function toPngOrJpeg(blob) {          // PNG・JPEG 以外（BMP など）は PNG にしてから送る
+    if (blob.type === "image/png" || blob.type === "image/jpeg") return blob;
+    const bmp = await createImageBitmap(blob);
+    const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+    c.getContext("2d").drawImage(bmp, 0, 0);
+    return new Promise((res) => c.toBlob(res, "image/png"));
+  }
+  async function pasteImage(blob) {
+    try {
+      finishText();
+      if (name) await save();
+      const r = await ctx.upload("save_paste", await toPngOrJpeg(blob), {});
+      await refresh();
+      if (r.made?.length) { await open(r.made.at(-1)); ctx.toast(L.pasted); }
+    } catch (e) { ctx.toast(e.message, "error"); }
+  }
+  async function pasteFromButton() {          // ボタン: クリップボードを読めなければ Ctrl+V を案内する
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((t) => t.startsWith("image/"));
+        if (type) return pasteImage(await item.getType(type));
+      }
+      ctx.toast(L.noClipImage);
+    } catch { ctx.toast(L.pasteKey); }
+  }
+  window.addEventListener("paste", (e) => {
+    if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) || e.target.isContentEditable) return;   // 文字の入力中は普通の貼り付け
+    const item = [...(e.clipboardData?.items || [])].find((i) => i.kind === "file" && i.type.startsWith("image/"));
+    if (!item) { if (!edit.hidden) return; ctx.toast(L.noClipImage); return; }
+    e.preventDefault();
+    pasteImage(item.getAsFile());
+  });
   async function deletePhoto(f) {
     try {
       const r = await ctx.call("delete_photos", { names: [f] });

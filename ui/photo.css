@@ -198,3 +198,6 @@
 .ph-cardw:hover .ph-del, .ph-del:focus-visible { opacity: 1; }
 .ph-del:hover { color: var(--danger); background: var(--solid-3); }
 @media (prefers-reduced-motion: reduce) { .ph-del { transition: none; } }
+
+/* ---- 0.8: 貼り付け ---- */
+.ph-drop-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }

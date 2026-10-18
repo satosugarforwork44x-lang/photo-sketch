@@ -59,6 +59,7 @@ So Photo Sketch is a **light editing table that sits in Hub**, one click away:
 | **Masks** (`L`) | Linear (from an edge) and radial (from a centre, with feather and invert), each with its own adjustments |
 | **Crop / straighten** (`C` / `R`) | Aspect ratios free, original, 1:1, 4:5, 16:9, 9:16. Draw along the horizon to level it |
 | **RAW** | DNG, CR2, CR3, NEF, ARW, RAF, ORF, RW2, PEF, SRW. White balance, exposure and highlight recovery with rawpy |
+| **Paste a screenshot** | `Ctrl+V` (or the Paste button) turns the image on the clipboard — e.g. from `Win+Shift+S` — into a photo sketch at once. No need to save it as a file first |
 | **Delete** | From the list (hover button, right-click or `Delete`). The sketch file and its AI preview go to the Recycle Bin; the original photo and your exports are kept |
 | **Export** (`Ctrl+E`) | JPEG (quality) or PNG, full size / 2048 / 1080, or the layers alone as a transparent PNG |
 | **English & Japanese** | The panel is available in both languages |
@@ -75,7 +76,7 @@ Requires **Hub 0.8 or later** (for image upload and Claude image access). No Pyt
    ```bat
    py -m pip install --user -r "%LOCALAPPDATA%\Hub\modules\photo\requirements.txt"
    ```
-3. Restart Hub. **Photo Sketch** appears on the bar. Drop photos onto the panel.
+3. Restart Hub. **Photo Sketch** appears on the bar. Drop photos onto the panel, or paste a screenshot with `Ctrl+V`.
    Your sketches are kept in a **`Photo Sketch`** folder next to your folder panels, so it also becomes a folder panel.
 4. (Optional) To let Claude see and edit them: Hub Settings (⚙) → Claude integration → set `Photo Sketch` to **read & write** and turn on **Let Claude view images**.
 

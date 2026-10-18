@@ -164,6 +164,26 @@ class PhotoTest(unittest.TestCase):
         folder = Path(self.api.state()["folder"])
         self.assertTrue((folder / "_to_delete" / f"{name}.photo.json").exists())
 
+    def test_paste_makes_a_sketch_and_delete_removes_the_paste(self):
+        import sys, types
+        folder = Path(self.api.state()["folder"])
+        r = self.api.save_paste(b"\x89PNG\r\n\x1a\n" + b"x" * 8)
+        name = r["made"][0]
+        src = Path(self.api.open_photo(name)["doc"]["source"]["path"])
+        self.assertEqual(src.parent.name, "_paste")
+        self.assertTrue(src.is_file())
+        with self.assertRaises(self.api.PhotoError):
+            self.api.save_paste(b"GIF89a")
+        fake = types.ModuleType("send2trash")
+        fake.send2trash = lambda path: Path(path).unlink()
+        sys.modules["send2trash"] = fake
+        try:
+            self.api.delete_photos([name])
+        finally:
+            del sys.modules["send2trash"]
+        self.assertFalse(src.exists())                              # 貼り付けた写真も消す
+        self.assertNotIn(name, self.api.state()["files"])
+
     def test_missing_source_and_relink(self):
         name = self.api.add_images([str(self.pic)])["made"][0]
         moved = self.pic.with_name("moved.jpg")
