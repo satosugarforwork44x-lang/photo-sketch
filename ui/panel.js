@@ -1154,11 +1154,14 @@ export async function mount(el, ctx) {
     ta.addEventListener("input", () => { layer.text = ta.value; if (layer.auto !== false) layer.name = nameOfText(ta.value); placeText(); });
     ta.addEventListener("keydown", (e) => {
       e.stopPropagation();
+      if (e.isComposing || e.keyCode === 229) return;            // 日本語の変換中の Enter / Esc は変換のためのもの
       if (e.key === "Escape" || (e.key === "Enter" && e.ctrlKey)) { e.preventDefault(); finishText(); }
     });
-    ta.addEventListener("blur", () => setTimeout(() => { if (editing?.ta === ta) finishText(); }, 0));
+    ta.addEventListener("blur", () => setTimeout(() => { if (editing?.ta === ta && document.activeElement !== ta) finishText(); }, 50));
     ta.focus();                                    // すぐ打ち始めても最初の文字が落ちないように
-    setTimeout(() => { if (editing?.ta === ta) { ta.focus(); if (!isNew) ta.select(); } }, 0);
+    const end = ta.value.length;
+    ta.setSelectionRange(end, end);                // 直すときは最後にカーソル（全部を選ぶと、打った字で消えてしまう）
+    setTimeout(() => { if (editing?.ta === ta && document.activeElement !== ta) ta.focus(); }, 0);
     renderSide(); draw();
   }
   const nameOfText = (t) => (t.split("\n")[0].trim().slice(0, 16) || L.textN);
@@ -1326,7 +1329,9 @@ export async function mount(el, ctx) {
       return;
     }
     if (e.button !== 0 || !doc || !img) return;
+    const wasEditing = !!editing;
     finishText();
+    if (wasEditing && tool === "T") { e.preventDefault(); return; }   // 文字を入力中のクリックは「確定」だけ（新しい文字は作らない）
     stage.setPointerCapture(e.pointerId);
     const [x, y] = toImg(e);
     const tol = 6 / view.s;
@@ -1421,6 +1426,7 @@ export async function mount(el, ctx) {
       drag = { before, move: (ix, iy) => eraseAt(layer, ix, iy, r) };
       draw();
     } else if (tool === "T") {
+      e.preventDefault();                 // これが無いと、押した直後に入力欄からフォーカスが外れて文字が入らない
       const hit = hitTest(doc.layers, x, y, tol);
       if (hit?.layer.type === "text") { startText(hit.layer, false); return; }
       const layer = insertLayer({ id: newId(), type: "text", name: L.textN, auto: true, visible: true, opacity: 1, text: "",

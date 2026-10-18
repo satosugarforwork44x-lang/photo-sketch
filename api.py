@@ -161,6 +161,8 @@ def normalize(raw) -> tuple[dict, list[str]]:
     out["masks"] = masks
     layers, ids = [], set()
     for i, layer in enumerate(raw.get("layers") or []):
+        if isinstance(layer, dict) and layer.get("type") == "text" and not str(layer.get("text") or "").strip():
+            continue                     # 空の文字（入力の途中で閉じたもの）は黙って捨てる
         if not isinstance(layer, dict) or layer.get("type") not in LAYER_TYPES:
             warn.append(f"layers[{i}] を読み飛ばした（type は {', '.join(sorted(LAYER_TYPES))}）")
             continue
