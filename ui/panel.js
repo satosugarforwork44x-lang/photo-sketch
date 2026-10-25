@@ -687,6 +687,7 @@ export async function mount(el, ctx) {
   function setTool(k) {
     if (!READY.has(k)) return;
     finishText();
+    canvas.style.cursor = "";
     const wasFraming = framing();
     tool = k;
     if (k !== "V" && sel && !matchesTool(sel)) sel = null;
@@ -1427,8 +1428,29 @@ export async function mount(el, ctx) {
       draw();
     } else if (tool === "T") {
       e.preventDefault();                 // これが無いと、押した直後に入力欄からフォーカスが外れて文字が入らない
+      // 文字の道具でも、今ある文字は「ドラッグで移動・クリックで直す」。角のつまみで大きさ
+      const hb = selBoxScreen(), r0 = stage.getBoundingClientRect();
+      if (hb && sel?.layer.type === "text" && Math.abs(e.clientX - r0.left - (hb.x + hb.w + 4)) <= handleSize && Math.abs(e.clientY - r0.top - (hb.y + hb.h + 4)) <= handleSize) {
+        const start = { box: boxOf(sel), size: sel.layer.size };
+        drag = { before, move: (ix, iy) => { resizeTo(sel, start, ix, iy); renderProps(); } };
+        return;
+      }
       const hit = hitTest(doc.layers, x, y, tol);
-      if (hit?.layer.type === "text") { startText(hit.layer, false); return; }
+      if (hit?.layer.type === "text") {
+        sel = { layer: hit.layer }; activeId = hit.layer.id;
+        renderSide(); draw();
+        let lx = x, ly = y, moved = false;
+        drag = {
+          before,
+          move: (ix, iy) => {
+            if (!moved && Math.hypot(ix - x, iy - y) * view.s < 4) return;     // 少し動くまではクリック扱い
+            moved = true;
+            moveBy(sel, ix - lx, iy - ly); lx = ix; ly = iy;
+          },
+          end: () => { if (!moved) { startText(hit.layer, false); return false; } return true; },
+        };
+        return;
+      }
       const layer = insertLayer({ id: newId(), type: "text", name: L.textN, auto: true, visible: true, opacity: 1, text: "",
         x: Math.round(x), y: Math.round(y - px(opt.text) * 0.6), size: px(opt.text), weight: opt.weight, font: opt.font,
         color: opt.color, stroke: { color: "#000000", width: opt.outline ? Math.max(2, Math.round(px(opt.text) * 0.06)) : 0 },
@@ -1508,6 +1530,10 @@ export async function mount(el, ctx) {
     cursor = [e.clientX - r.left, e.clientY - r.top];
     if (pan) return setView(view.s, e.clientX - pan.x, e.clientY - pan.y);
     if (drag) { const [x, y] = toImg(e); drag.move(x, y); }
+    else if (tool === "T" && doc && !editing && e.target === canvas) {     // 文字の上では「動かせる」形のカーソル
+      const [x, y] = toImg(e);
+      canvas.style.cursor = hitTest(doc.layers, x, y, 6 / view.s)?.layer.type === "text" ? "move" : "";
+    }
     if (drag || tool === "B" || tool === "E") draw();
   });
   stage.addEventListener("pointerleave", () => { cursor = null; draw(); });

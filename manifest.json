@@ -1,7 +1,7 @@
 {
   "id": "photo",
   "name": "フォトスケッチ",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "summary": "写真に文字・線・図形を重ね、AI に頼む場所を丸で示す。元の写真は変えない（レイヤーは JSON で持つ）",
   "kind": "panel",
   "runtime": "python",
